@@ -9,12 +9,7 @@ PostgreSQL/pgvector · Elasticsearch · Redis · Keycloak · Docker/Kubernetes �
 
 ```mermaid
 flowchart TB
-    subgraph Clients["Clients"]
-        direction LR
-        WEB["Web Store"]
-        MOB["Mobile App"]
-        CHAT["AI Chat Assistant"]
-    end
+    Clients["Clients<br/>Web Store · Mobile App · AI Chat"]
 
     subgraph Edge["Edge and Security"]
         direction LR
@@ -48,7 +43,7 @@ flowchart TB
         end
     end
 
-    BUS[["Apache Kafka + Schema Registry<br/>order saga · search indexing · emails · file jobs<br/>transactional outbox · Debezium CDC · dead-letter topics"]]
+    BUS[["Apache Kafka<br/>+ Schema Registry<br/>outbox · CDC · DLT"]]
 
     subgraph Data["Data Stores — each service owns its own data"]
         direction LR
