@@ -10,82 +10,69 @@ PostgreSQL/pgvector · Elasticsearch · Redis · Keycloak · Docker/Kubernetes �
 ```mermaid
 flowchart TB
     subgraph Clients["Clients"]
+        direction LR
         WEB["Web Store"]
         MOB["Mobile App"]
         CHAT["AI Chat Assistant"]
     end
 
     subgraph Edge["Edge and Security"]
-        GW["API Gateway<br/>routing · JWT check · rate limiting · CORS"]
+        direction LR
+        GW["API Gateway<br/>routing · JWT check<br/>rate limiting · CORS"]
         KC["Keycloak<br/>OAuth2 / OpenID Connect"]
-        DISC["Discovery Service<br/>Eureka locally · Kubernetes DNS in cloud"]
+        DISC["Discovery Service<br/>Eureka locally<br/>Kubernetes DNS in cloud"]
     end
 
-    subgraph Commerce["Commerce Services"]
-        IDS["Identity"]
-        CUS["Customer<br/>profile · addresses · wishlist"]
-        CAT["Product Catalog<br/>categories · pricing · reviews"]
-        INV["Inventory<br/>stock reservations"]
-        CART["Shopping Cart"]
-        ORD["Order<br/>saga orchestrator · tracking"]
-        PAY["Payment"]
+    subgraph Services["Microservices — Spring Boot 4 · Java 21"]
+        direction LR
+        subgraph Commerce["Commerce"]
+            direction TB
+            IDS["Identity"]
+            CUS["Customer<br/>profile · wishlist"]
+            CAT["Product Catalog<br/>pricing · reviews"]
+            INV["Inventory<br/>stock reservations"]
+            CART["Shopping Cart"]
+            ORD["Order<br/>saga orchestrator"]
+            PAY["Payment"]
+        end
+        subgraph Platform["Platform"]
+            direction TB
+            SRCH["Search<br/>keyword + semantic"]
+            FILE["File Management<br/>uploads · imports · reports"]
+            NOTIF["Notification<br/>email"]
+        end
+        subgraph AISvc["AI — Spring AI"]
+            direction TB
+            ASSIST["AI Shopping Assistant<br/>agent · tools · RAG support"]
+            REC["AI Recommendations"]
+        end
     end
 
-    subgraph Platform["Platform Services"]
-        SRCH["Search<br/>keyword + semantic hybrid"]
-        FILE["File Management<br/>pre-signed uploads · imports · reports"]
-        NOTIF["Notification<br/>email"]
-    end
-
-    subgraph AISvc["AI Services (Spring AI)"]
-        ASSIST["AI Shopping Assistant<br/>agent · tool calling · RAG support"]
-        REC["AI Recommendations"]
-    end
-
-    BUS[["Apache Kafka + Schema Registry<br/>transactional outbox · Debezium CDC · retries and dead-letter topics"]]
+    BUS[["Apache Kafka + Schema Registry<br/>order saga · search indexing · emails · file jobs<br/>transactional outbox · Debezium CDC · dead-letter topics"]]
 
     subgraph Data["Data Stores — each service owns its own data"]
+        direction LR
         PG[("PostgreSQL<br/>one database per service")]
-        PGV[("pgvector<br/>document embeddings")]
-        ES[("Elasticsearch<br/>full-text + vectors")]
+        PGV[("pgvector<br/>RAG embeddings")]
+        ES[("Elasticsearch<br/>search index")]
         RD[("Redis<br/>cache · carts · rate limits")]
         OBJ[("S3 / Azure Blob<br/>files")]
     end
 
     subgraph External["External Services"]
+        direction LR
         LLM{{"LLM provider<br/>Ollama · Claude · OpenAI"}}
-        STRIPE{{"Stripe test mode"}}
+        STRIPE{{"Stripe<br/>test mode"}}
         MAIL{{"Email<br/>Mailpit · SES · Azure"}}
-        CLAM{{"ClamAV virus scan"}}
+        CLAM{{"ClamAV<br/>virus scan"}}
     end
 
-    Clients -->|HTTPS| GW
-    GW -.->|validate tokens| KC
-    IDS -.->|manage users| KC
-    GW -->|REST| Commerce
-    GW -->|REST| Platform
-    GW -->|REST| AISvc
-    ASSIST -->|"tool calls with the user's token"| Commerce
-
-    Commerce <-->|events and saga commands| BUS
-    FILE <--> BUS
-    BUS --> SRCH
-    BUS --> NOTIF
-    BUS --> REC
-    BUS --> ASSIST
-
-    Commerce --- PG
-    CART --- RD
-    GW --- RD
-    SRCH --- ES
-    ASSIST --- PGV
-    FILE --- OBJ
-
-    AISvc --> LLM
-    SRCH -->|embeddings| LLM
-    PAY --> STRIPE
-    NOTIF --> MAIL
-    FILE --> CLAM
+    Clients -->|HTTPS| Edge
+    Edge -->|REST| Services
+    Services <-->|async events| BUS
+    BUS ~~~ Data
+    Services --> Data
+    Services --> External
 ```
 
 **How the services talk:** the client waits for an answer → REST through the gateway.
